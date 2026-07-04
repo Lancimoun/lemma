@@ -7,6 +7,16 @@ system's own recall, latency, cost, and cache efficiency while you use it.
 > In mathematics, a *lemma* is a small **proven** result used to build larger proofs.
 > LEMMA holds answers to the same standard: no claim without evidence.
 
+## Live demo
+
+- App: https://lemma-production-b84f.up.railway.app
+- Health check: https://lemma-production-b84f.up.railway.app/health
+- Reliability check: https://lemma-production-b84f.up.railway.app/eval
+
+The public deployment runs on Railway with a persistent `/data` volume for the
+embedded Qdrant index. Retrieval and evals work without an LLM key; Claude-backed
+answers require `ANTHROPIC_API_KEY` to be set in Railway variables.
+
 ## Why this project exists
 
 Most RAG demos stop at "it answered." Production AI systems have to answer a harder
