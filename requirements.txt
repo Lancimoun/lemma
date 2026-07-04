@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+qdrant-client[fastembed]>=1.12
+anthropic>=0.45
+pypdf>=5.0
+slowapi>=0.1.9
+python-multipart>=0.0.9

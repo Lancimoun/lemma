@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEMMA — a research assistant that proves its answers</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b24; --panel2: #1c2330; --border: #2a3446;
+    --text: #e6ecf5; --muted: #8b98ad; --accent: #4fd1c5; --accent2: #f6ad55;
+    --pass: #48bb78; --fail: #f56565;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
+  header { padding: 18px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  header h1 { font-size: 22px; letter-spacing: 3px; color: var(--accent); }
+  header .tag { color: var(--muted); font-size: 13px; }
+  header .badge { margin-left: auto; font-size: 12px; color: var(--accent2); border: 1px solid var(--border); padding: 3px 10px; border-radius: 12px; }
+  main { display: grid; grid-template-columns: 260px 1fr 320px; gap: 16px; padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 12px; }
+  button { background: var(--accent); color: #08211e; border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  button:disabled { opacity: .45; cursor: wait; }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; font-size: 12px; }
+  input[type=file] { width: 100%; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .doclist { list-style: none; margin-top: 12px; font-size: 13px; }
+  .doclist li { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 4px; border-bottom: 1px solid var(--panel2); }
+  .doclist .chunks { color: var(--muted); font-size: 11px; }
+  #chat { display: flex; flex-direction: column; min-height: 70vh; }
+  #messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-bottom: 14px; }
+  .msg { border-radius: 8px; padding: 12px 14px; max-width: 92%; }
+  .msg.q { background: var(--panel2); align-self: flex-end; border: 1px solid var(--border); }
+  .msg.a { background: #121822; border: 1px solid var(--border); align-self: flex-start; white-space: pre-wrap; }
+  .msg.err { border-color: var(--fail); color: var(--fail); align-self: flex-start; }
+  sup.cite { color: var(--accent2); cursor: help; font-weight: 700; padding: 0 1px; }
+  .meta { color: var(--muted); font-size: 11px; margin-top: 8px; }
+  .sources { margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .sources span { display: inline-block; border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; margin: 2px 3px 0 0; }
+  #askrow { display: flex; gap: 8px; margin-top: 10px; }
+  #question { flex: 1; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 14px; }
+  .evalrow { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid var(--panel2); font-size: 13px; }
+  .evalrow .val { font-weight: 700; }
+  .pass { color: var(--pass); } .fail { color: var(--fail); }
+  .small { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  label.chk { font-size: 12px; color: var(--muted); display: block; margin: 8px 0; }
+  .spin { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>LEMMA</h1>
+  <span class="tag">a research assistant that <b>proves</b> its answers</span>
+  <span class="badge" id="modelBadge">…</span>
+</header>
+
+<main>
+  <!-- Documents -->
+  <section class="panel">
+    <h2>Documents</h2>
+    <input type="file" id="file" accept=".txt,.md,.pdf">
+    <button id="uploadBtn" onclick="upload()">Upload &amp; index</button>
+    <div class="spin" id="upStatus"></div>
+    <ul class="doclist" id="docs"></ul>
+  </section>
+
+  <!-- Chat -->
+  <section class="panel" id="chat">
+    <h2>Ask</h2>
+    <div id="messages"></div>
+    <div id="askrow">
+      <input id="question" placeholder="Ask about your documents… (try: how does LEMMA measure reliability?)"
+             onkeydown="if(event.key==='Enter')ask()">
+      <button id="askBtn" onclick="ask()">Ask</button>
+    </div>
+  </section>
+
+  <!-- Reliability -->
+  <section class="panel">
+    <h2>Reliability — live</h2>
+    <button id="evalBtn" onclick="runEval()">Run evals</button>
+    <label class="chk"><input type="checkbox" id="llmCheck"> also verify the LLM answer (costs 1 query)</label>
+    <div id="evalResults"></div>
+    <div class="small">
+      The <b>recall probe</b> writes a unique fact into the live index, retrieves it through the
+      real pipeline, verifies it, and cleans up. Reliability is measured — not assumed.
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function jfetch(url, opts) {
+  const res = await fetch(url, opts);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+  return body;
+}
+
+async function loadHealth() {
+  try {
+    const h = await jfetch("/health");
+    $("modelBadge").textContent = h.model;
+  } catch { $("modelBadge").textContent = "offline"; }
+}
+
+async function loadDocs() {
+  try {
+    const d = await jfetch("/documents");
+    $("docs").innerHTML = d.documents.map(x =>
+      `<li><span>${esc(x.doc_name)}</span>
+       <span class="chunks">${x.chunks} chunks</span>
+       <button class="ghost" onclick="delDoc('${esc(x.doc_name)}')">✕</button></li>`).join("")
+      || `<li><span class="chunks">no documents yet</span></li>`;
+  } catch {}
+}
+
+async function delDoc(name) {
+  await jfetch(`/documents/${encodeURIComponent(name)}`, { method: "DELETE" });
+  loadDocs();
+}
+
+async function upload() {
+  const f = $("file").files[0];
+  if (!f) { $("upStatus").textContent = "choose a file first"; return; }
+  $("uploadBtn").disabled = true;
+  $("upStatus").textContent = "indexing…";
+  try {
+    const form = new FormData();
+    form.append("file", f);
+    const r = await jfetch("/ingest", { method: "POST", body: form });
+    $("upStatus").textContent = `indexed ${r.chunks} chunks ✓`;
+    loadDocs();
+  } catch (e) {
+    $("upStatus").textContent = e.message;
+  } finally {
+    $("uploadBtn").disabled = false;
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderAnswer(r) {
+  let html = "";
+  let n = 0;
+  for (const seg of r.segments) {
+    html += esc(seg.text);
+    for (const c of seg.citations) {
+      n += 1;
+      const tip = `${c.document_title || "source"} — “${(c.cited_text || "").slice(0, 400)}”`;
+      html += `<sup class="cite" title="${esc(tip)}">[${n}]</sup>`;
+    }
+  }
+  const u = r.usage;
+  const cost = r.cost_usd != null ? ` · $${r.cost_usd}` : "";
+  const cache = u.cache_read_input_tokens > 0 ? ` · cache read ${u.cache_read_input_tokens} tok` : "";
+  const meta = `<div class="meta">${r.model} · ${r.latency_ms} ms${cost} · ${u.input_tokens}→${u.output_tokens} tok${cache}${r.truncated ? " · ⚠ truncated" : ""}</div>`;
+  const sources = `<div class="sources">${r.sources.map(s =>
+    `<span>${esc(s.doc_name)} #${s.chunk_index}</span>`).join("")}</div>`;
+  return html + meta + sources;
+}
+
+async function ask() {
+  const q = $("question").value.trim();
+  if (!q) return;
+  $("question").value = "";
+  $("askBtn").disabled = true;
+  const box = $("messages");
+  box.insertAdjacentHTML("beforeend", `<div class="msg q">${esc(q)}</div>`);
+  const holder = document.createElement("div");
+  holder.className = "msg a";
+  holder.textContent = "thinking…";
+  box.appendChild(holder);
+  box.scrollTop = box.scrollHeight;
+  try {
+    const r = await jfetch("/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q }),
+    });
+    holder.innerHTML = renderAnswer(r);
+  } catch (e) {
+    holder.className = "msg err";
+    holder.textContent = e.message;
+  } finally {
+    $("askBtn").disabled = false;
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+function row(label, value, cls) {
+  return `<div class="evalrow"><span>${label}</span><span class="val ${cls || ""}">${value}</span></div>`;
+}
+
+async function runEval() {
+  $("evalBtn").disabled = true;
+  $("evalResults").innerHTML = `<div class="spin">running probe + canaries…</div>`;
+  try {
+    const llm = $("llmCheck").checked ? "true" : "false";
+    const r = await jfetch(`/eval?llm_check=${llm}`);
+    const p = r.recall_probe, c = r.canaries, o = r.ops;
+    let html = "";
+    html += row("Recall probe (retrieval)", p.retrieval_pass ? "PASS" : "FAIL", p.retrieval_pass ? "pass" : "fail");
+    if ("answer_pass" in p)
+      html += row("Recall probe (LLM answer)", p.answer_pass ? "PASS" : "FAIL", p.answer_pass ? "pass" : "fail");
+    html += row("Canary hit-rate", `${c.passed}/${c.total} (${Math.round((c.hit_rate || 0) * 100)}%)`,
+                c.passed === c.total ? "pass" : (c.passed ? "" : "fail"));
+    if (o.queries > 0) {
+      html += row("Queries (rolling)", o.queries);
+      html += row("Latency p50 / p95", `${o.latency_p50_ms} / ${o.latency_p95_ms} ms`);
+      if (o.avg_cost_usd != null) html += row("Avg cost / query", `$${o.avg_cost_usd}`);
+      html += row("Cache hit-rate", `${Math.round(o.cache_hit_rate * 100)}%`);
+    } else {
+      html += row("Ops metrics", "ask something first");
+    }
+    $("evalResults").innerHTML = html;
+  } catch (e) {
+    $("evalResults").innerHTML = `<div class="fail">${esc(e.message)}</div>`;
+  } finally {
+    $("evalBtn").disabled = false;
+  }
+}
+
+loadHealth();
+loadDocs();
+</script>
+</body>
+</html>
