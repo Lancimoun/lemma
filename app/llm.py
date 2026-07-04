@@ -7,6 +7,7 @@ so the API returns exact cited spans (`cited_text`) per claim — no prompt-engi
 
 from __future__ import annotations
 
+import os
 import time
 from typing import Any, Sequence
 
@@ -38,6 +39,8 @@ class AnswerError(RuntimeError):
 def get_client() -> anthropic.Anthropic:
     global _client
     if _client is None:
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            raise AnswerError("Claude answering is not configured: ANTHROPIC_API_KEY is missing.")
         _client = anthropic.Anthropic()
     return _client
 
@@ -75,6 +78,9 @@ def answer_question(
         raise AnswerError(f"Claude API error ({exc.status_code}): {exc.message}") from exc
     except anthropic.APIConnectionError as exc:
         raise AnswerError(f"Could not reach the Claude API: {exc}") from exc
+    except TypeError as exc:
+        # The Anthropic SDK raises TypeError when credentials are absent or malformed.
+        raise AnswerError(f"Claude client is not configured correctly: {exc}") from exc
     latency_ms = (time.perf_counter() - started) * 1000.0
 
     # Always check stop_reason before reading content.

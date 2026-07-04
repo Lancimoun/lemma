@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 
-from app.llm import estimate_cost
+import pytest
+
+from app import llm
+from app.llm import AnswerError, estimate_cost
 
 
 @dataclass
@@ -30,3 +33,11 @@ def test_estimate_cost_counts_cache_reads_and_writes():
 def test_estimate_cost_unknown_model_returns_none():
     usage = FakeUsage(input_tokens=10, output_tokens=10)
     assert estimate_cost("some-future-model", usage) is None
+
+
+def test_missing_anthropic_key_raises_controlled_error(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(llm, "_client", None)
+
+    with pytest.raises(AnswerError, match="ANTHROPIC_API_KEY is missing"):
+        llm.get_client()
