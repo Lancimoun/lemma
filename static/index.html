@@ -38,6 +38,8 @@
   .sources { margin-top: 8px; font-size: 11px; color: var(--muted); }
   .sources span { display: inline-block; border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; margin: 2px 3px 0 0; }
   #askrow { display: flex; gap: 8px; margin-top: 10px; }
+  .cursor { animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
   #question { flex: 1; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 14px; }
   .evalrow { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid var(--panel2); font-size: 13px; }
   .evalrow .val { font-weight: 700; }
@@ -177,19 +179,64 @@ async function ask() {
   box.appendChild(holder);
   box.scrollTop = box.scrollHeight;
   try {
-    const r = await jfetch("/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: q }),
-    });
-    holder.innerHTML = renderAnswer(r);
+    await askStreaming(q, holder, box);
   } catch (e) {
-    holder.className = "msg err";
-    holder.textContent = e.message;
+    // Streaming unavailable (old server, proxy buffering) — fall back to the classic call.
+    try {
+      const r = await jfetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+      holder.innerHTML = renderAnswer(r);
+    } catch (e2) {
+      holder.className = "msg err";
+      holder.textContent = e2.message;
+    }
   } finally {
     $("askBtn").disabled = false;
     box.scrollTop = box.scrollHeight;
   }
+}
+
+async function askStreaming(q, holder, box) {
+  const resp = await fetch("/ask/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question: q }),
+  });
+  if (!resp.ok || !resp.body) throw new Error(`stream unavailable (${resp.status})`);
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "", answer = "", done = false;
+  while (!done) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    buf += decoder.decode(chunk.value, { stream: true });
+    // SSE frames are separated by a blank line: "event: X\ndata: {...}\n\n"
+    let sep;
+    while ((sep = buf.indexOf("\n\n")) !== -1) {
+      const frame = buf.slice(0, sep);
+      buf = buf.slice(sep + 2);
+      const ev = (frame.match(/^event: (.+)$/m) || [])[1];
+      const data = (frame.match(/^data: (.+)$/m) || [])[1];
+      if (!ev || !data) continue;
+      const payload = JSON.parse(data);
+      if (ev === "delta") {
+        answer += payload.text;
+        holder.innerHTML = esc(answer) + '<span class="cursor">▋</span>';
+        box.scrollTop = box.scrollHeight;
+      } else if (ev === "result") {
+        holder.innerHTML = renderAnswer(payload);
+        done = true;
+      } else if (ev === "error") {
+        holder.className = "msg err";
+        holder.textContent = payload.error;
+        done = true;
+      }
+    }
+  }
+  if (!done && !answer) throw new Error("stream ended without data");
 }
 
 function row(label, value, cls) {
