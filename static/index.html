@@ -236,6 +236,7 @@ async function askStreaming(q, holder, box) {
       }
     }
   }
+  if (done) { try { await reader.cancel(); } catch {} }
   if (!done && !answer) throw new Error("stream ended without data");
 }
 
