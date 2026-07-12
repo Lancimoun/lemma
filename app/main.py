@@ -85,7 +85,8 @@ def documents() -> dict:
 
 
 @app.delete("/documents/{doc_name}")
-def delete_document(doc_name: str) -> dict:
+@limiter.limit(config.RATE_LIMIT_INGEST)
+def delete_document(request: Request, doc_name: str) -> dict:
     get_store().delete_doc(doc_name)
     return {"deleted": doc_name}
 
