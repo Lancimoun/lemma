@@ -12,6 +12,7 @@ QDRANT_PATH = DATA_DIR / "qdrant"
 # --- LLM ---
 MODEL = os.getenv("MODEL", "claude-opus-4-8")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2048"))
+PUBLIC_BADGE_LABEL = os.getenv("PUBLIC_BADGE_LABEL", "Hybrid RAG + Citations + Live Evals")
 
 # --- Retrieval ---
 TOP_K = int(os.getenv("TOP_K", "8"))          # chunks sent to Claude

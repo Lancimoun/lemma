@@ -69,7 +69,13 @@ def index() -> FileResponse:
 @app.get("/health")
 def health() -> dict:
     docs = [d for d in get_store().list_docs() if not d["doc_name"].startswith(evals.PROBE_PREFIX)]
-    return {"status": "ok", "version": __version__, "model": config.MODEL, "documents": len(docs)}
+    return {
+        "status": "ok",
+        "version": __version__,
+        "model": config.MODEL,
+        "public_badge": config.PUBLIC_BADGE_LABEL,
+        "documents": len(docs),
+    }
 
 
 @app.get("/documents")

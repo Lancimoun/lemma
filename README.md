@@ -92,6 +92,7 @@ Everything is an environment variable (see `.env.example`):
 | `MODEL` | `claude-opus-4-8` | set `claude-haiku-4-5` for a low-cost public demo |
 | `MAX_TOKENS` | `2048` | answer cap |
 | `TOP_K` | `8` | chunks passed to the model |
+| `PUBLIC_BADGE_LABEL` | `Hybrid RAG + Citations + Live Evals` | public UI badge; keeps raw model names out of the demo surface |
 | `MAX_UPLOAD_MB` / `MAX_DOCS` | `5` / `20` | abuse limits |
 | `RATE_LIMIT_ASK` | `10/minute` | per-IP |
 
