@@ -119,3 +119,22 @@ def test_stream_answer_refusal_raises_after_deltas(monkeypatch):
 
     with pytest.raises(AnswerError, match="declined"):
         list(llm.stream_answer("q", HITS))
+
+
+def test_result_flags_uncited_answers_as_ungrounded(monkeypatch):
+    monkeypatch.setattr(llm, "_client", FakeClient(["not in the documents"]))
+    events = list(llm.stream_answer("q", HITS))
+    _, result = events[-1]
+    assert result["grounded"] is False
+
+
+def test_result_flags_cited_answers_as_grounded(monkeypatch):
+    class CitedBlock(FakeBlock):
+        def __init__(self, text):
+            super().__init__(text)
+            self.citations = [type("C", (), {"document_title": "handbook.md", "document_index": 0, "cited_text": "LEMMA is"})()]
+
+    msg = FakeMessage("cited answer")
+    msg.content = [CitedBlock("cited answer")]
+    result = llm._build_result(msg, "fake-model", 12.0)
+    assert result["grounded"] is True

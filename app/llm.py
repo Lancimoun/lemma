@@ -148,6 +148,9 @@ def _build_result(msg: Any, model: str, latency_ms: float) -> dict[str, Any]:
         "model": msg.model,
         "stop_reason": msg.stop_reason,
         "truncated": msg.stop_reason == "max_tokens",
+        # An answer with zero citations is either an honest "not in the documents"
+        # abstention or an ungrounded claim — either way the UI must flag it.
+        "grounded": any(seg["citations"] for seg in segments),
         "segments": segments,
         "answer_text": "".join(s["text"] for s in segments),
         "usage": {
