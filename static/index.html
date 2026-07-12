@@ -39,6 +39,7 @@
   .sources span { display: inline-block; border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; margin: 2px 3px 0 0; }
   #askrow { display: flex; gap: 8px; margin-top: 10px; }
   .cursor { animation: blink 1s step-start infinite; }
+  .sources span.weak { opacity: .55; }
   @keyframes blink { 50% { opacity: 0; } }
   #question { flex: 1; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 14px; }
   .evalrow { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid var(--panel2); font-size: 13px; }
@@ -162,8 +163,16 @@ function renderAnswer(r) {
   const cache = u.cache_read_input_tokens > 0 ? ` · cache read ${u.cache_read_input_tokens} tok` : "";
   const grounded = r.grounded === false ? "⚠ no citations — unverified" : "grounded answer";
   const meta = `<div class="meta">${grounded} · ${r.latency_ms} ms${cost} · ${u.input_tokens}→${u.output_tokens} tok${cache}${r.truncated ? " · ⚠ truncated" : ""}</div>`;
-  const sources = `<div class="sources">${r.sources.map(s =>
-    `<span>${esc(s.doc_name)} #${s.chunk_index}</span>`).join("")}</div>`;
+  // Relevance shown relative to the best-matching chunk (raw RRF scores are
+  // meaningless to humans); weak chunks are dimmed so reviewers can see what
+  // the answer actually leaned on.
+  const top = Math.max(...r.sources.map(s => s.score));
+  const sources = `<div class="sources">${r.sources.map(s => {
+    const rel = top > 0 ? Math.round((s.score / top) * 100) : 0;
+    const cls = rel < 50 ? ' class="weak"' : "";
+    const tip = `retrieval score relative to best match (RRF): ${rel}%`;
+    return `<span${cls} title="${tip}">${esc(s.doc_name)} #${s.chunk_index} · ${rel}%</span>`;
+  }).join("")}</div>`;
   return html + meta + sources;
 }
 
