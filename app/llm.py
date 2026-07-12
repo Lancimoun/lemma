@@ -45,15 +45,7 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
-def answer_question(
-    question: str,
-    hits: Sequence[Hit],
-    model: str | None = None,
-    max_tokens: int | None = None,
-) -> dict[str, Any]:
-    model = model or config.MODEL
-    max_tokens = max_tokens or config.MAX_TOKENS
-
+def _request_content(question: str, hits: Sequence[Hit]) -> list[dict]:
     content: list[dict] = [
         {
             "type": "document",
@@ -64,6 +56,18 @@ def answer_question(
         for h in hits
     ]
     content.append({"type": "text", "text": question})
+    return content
+
+
+def answer_question(
+    question: str,
+    hits: Sequence[Hit],
+    model: str | None = None,
+    max_tokens: int | None = None,
+) -> dict[str, Any]:
+    model = model or config.MODEL
+    max_tokens = max_tokens or config.MAX_TOKENS
+    content = _request_content(question, hits)
 
     started = time.perf_counter()
     try:
@@ -83,6 +87,44 @@ def answer_question(
         raise AnswerError(f"Claude client is not configured correctly: {exc}") from exc
     latency_ms = (time.perf_counter() - started) * 1000.0
 
+    return _build_result(msg, model, latency_ms)
+
+
+def stream_answer(
+    question: str,
+    hits: Sequence[Hit],
+    model: str | None = None,
+    max_tokens: int | None = None,
+):
+    """Yield ("delta", text) as tokens arrive, then ("result", dict) — same shape as answer_question."""
+    model = model or config.MODEL
+    max_tokens = max_tokens or config.MAX_TOKENS
+    content = _request_content(question, hits)
+
+    started = time.perf_counter()
+    try:
+        with get_client().messages.stream(
+            model=model,
+            max_tokens=max_tokens,
+            system=_SYSTEM,
+            messages=[{"role": "user", "content": content}],
+        ) as stream:
+            for text in stream.text_stream:
+                yield ("delta", text)
+            msg = stream.get_final_message()
+    except anthropic.APIStatusError as exc:
+        raise AnswerError(f"Claude API error ({exc.status_code}): {exc.message}") from exc
+    except anthropic.APIConnectionError as exc:
+        raise AnswerError(f"Could not reach the Claude API: {exc}") from exc
+    except TypeError as exc:
+        # The Anthropic SDK raises TypeError when credentials are absent or malformed.
+        raise AnswerError(f"Claude client is not configured correctly: {exc}") from exc
+    latency_ms = (time.perf_counter() - started) * 1000.0
+
+    yield ("result", _build_result(msg, model, latency_ms))
+
+
+def _build_result(msg: Any, model: str, latency_ms: float) -> dict[str, Any]:
     # Always check stop_reason before reading content.
     if msg.stop_reason == "refusal":
         raise AnswerError("The model declined to answer this request.")

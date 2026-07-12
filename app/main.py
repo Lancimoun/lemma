@@ -9,8 +9,10 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import json
+
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -115,17 +117,64 @@ def ingest_file(request: Request, file: UploadFile = File(...)) -> dict:
     return {"doc_name": file.filename, "chunks": added}
 
 
-@app.post("/ask")
-@limiter.limit(config.RATE_LIMIT_ASK)
-def ask(request: Request, body: AskRequest) -> dict:
+def _search_or_fail(question: str):
     s = get_store()
-    question = body.question.strip()
     if not question:
         raise HTTPException(400, "Question is empty.")
-
     hits = s.search(question, top_k=config.TOP_K, prefetch_k=config.PREFETCH_K)
     if not hits:
         raise HTTPException(404, "No documents indexed yet — upload something first.")
+    return hits
+
+
+def _source_list(hits) -> list[dict]:
+    return [
+        {"doc_name": h.doc_name, "chunk_index": h.chunk_index, "score": round(h.score, 4)}
+        for h in hits
+    ]
+
+
+@app.post("/ask/stream")
+@limiter.limit(config.RATE_LIMIT_ASK)
+def ask_stream(request: Request, body: AskRequest) -> StreamingResponse:
+    """SSE variant of /ask: `delta` events per token chunk, one final `result` event.
+
+    Search failures surface as normal HTTP errors before the stream opens;
+    failures mid-stream arrive as an `error` event (headers are already sent).
+    """
+    question = body.question.strip()
+    hits = _search_or_fail(question)
+    sources = _source_list(hits)
+
+    def events():
+        try:
+            for kind, payload in llm.stream_answer(question, hits):
+                if kind == "delta":
+                    yield f"event: delta\ndata: {json.dumps({'text': payload})}\n\n"
+                else:
+                    payload["sources"] = sources
+                    metrics.record(
+                        latency_ms=payload["latency_ms"],
+                        cost_usd=payload["cost_usd"],
+                        cache_read_tokens=payload["usage"]["cache_read_input_tokens"],
+                        input_tokens=payload["usage"]["input_tokens"],
+                    )
+                    yield f"event: result\ndata: {json.dumps(payload)}\n\n"
+        except llm.AnswerError as exc:
+            yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/ask")
+@limiter.limit(config.RATE_LIMIT_ASK)
+def ask(request: Request, body: AskRequest) -> dict:
+    question = body.question.strip()
+    hits = _search_or_fail(question)
 
     try:
         result = llm.answer_question(question, hits)
@@ -138,10 +187,7 @@ def ask(request: Request, body: AskRequest) -> dict:
         cache_read_tokens=result["usage"]["cache_read_input_tokens"],
         input_tokens=result["usage"]["input_tokens"],
     )
-    result["sources"] = [
-        {"doc_name": h.doc_name, "chunk_index": h.chunk_index, "score": round(h.score, 4)}
-        for h in hits
-    ]
+    result["sources"] = _source_list(hits)
     return result
 
 

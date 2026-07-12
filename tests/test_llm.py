@@ -41,3 +41,81 @@ def test_missing_anthropic_key_raises_controlled_error(monkeypatch):
 
     with pytest.raises(AnswerError, match="ANTHROPIC_API_KEY is missing"):
         llm.get_client()
+
+
+# --- stream_answer ---------------------------------------------------------
+
+
+@dataclass
+class FakeHit:
+    text: str
+    doc_name: str
+    chunk_index: int
+
+
+class FakeBlock:
+    type = "text"
+
+    def __init__(self, text: str):
+        self.text = text
+        self.citations = []
+
+
+class FakeMessage:
+    def __init__(self, text: str, stop_reason: str = "end_turn"):
+        self.model = "fake-model"
+        self.stop_reason = stop_reason
+        self.content = [FakeBlock(text)]
+        self.usage = FakeUsage(input_tokens=10, output_tokens=5)
+
+
+class FakeStreamCtx:
+    def __init__(self, chunks: list[str], stop_reason: str = "end_turn"):
+        self._chunks = chunks
+        self._stop = stop_reason
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    @property
+    def text_stream(self):
+        return iter(self._chunks)
+
+    def get_final_message(self):
+        return FakeMessage("".join(self._chunks), self._stop)
+
+
+class FakeClient:
+    def __init__(self, chunks: list[str], stop_reason: str = "end_turn"):
+        self._ctx = FakeStreamCtx(chunks, stop_reason)
+        self.messages = self
+
+    def stream(self, **kwargs):
+        return self._ctx
+
+
+HITS = [FakeHit(text="LEMMA is a RAG assistant.", doc_name="handbook.md", chunk_index=0)]
+
+
+def test_stream_answer_yields_deltas_then_result(monkeypatch):
+    monkeypatch.setattr(llm, "_client", FakeClient(["Hel", "lo"]))
+
+    events = list(llm.stream_answer("what is lemma?", HITS))
+
+    deltas = [payload for kind, payload in events if kind == "delta"]
+    assert deltas == ["Hel", "lo"]
+    kind, result = events[-1]
+    assert kind == "result"
+    assert result["answer_text"] == "Hello"
+    assert result["truncated"] is False
+    assert result["usage"]["input_tokens"] == 10
+
+
+def test_stream_answer_refusal_raises_after_deltas(monkeypatch):
+    monkeypatch.setattr(llm, "_client", FakeClient(["nope"], stop_reason="refusal"))
+
+    with pytest.raises(AnswerError, match="declined"):
+        list(llm.stream_answer("q", HITS))
