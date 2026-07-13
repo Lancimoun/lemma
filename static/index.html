@@ -40,6 +40,7 @@
   #askrow { display: flex; gap: 8px; margin-top: 10px; }
   .cursor { animation: blink 1s step-start infinite; }
   .sources span.weak { opacity: .55; }
+  .route { color: #63e6be; }
   @keyframes blink { 50% { opacity: 0; } }
   #question { flex: 1; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 14px; }
   .evalrow { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid var(--panel2); font-size: 13px; }
@@ -162,7 +163,8 @@ function renderAnswer(r) {
   const cost = r.cost_usd != null ? ` · $${r.cost_usd}` : "";
   const cache = u.cache_read_input_tokens > 0 ? ` · cache read ${u.cache_read_input_tokens} tok` : "";
   const grounded = r.grounded === false ? "⚠ no citations — unverified" : "grounded answer";
-  const meta = `<div class="meta">${grounded} · ${r.latency_ms} ms${cost} · ${u.input_tokens}→${u.output_tokens} tok${cache}${r.truncated ? " · ⚠ truncated" : ""}</div>`;
+  const route = r.route ? `<span class="route" title="${esc(r.route.reason)}">route: ${esc(r.route.label)}</span> · ` : "";
+  const meta = `<div class="meta">${route}${grounded} · ${r.latency_ms} ms${cost} · ${u.input_tokens}→${u.output_tokens} tok${cache}${r.truncated ? " · ⚠ truncated" : ""}</div>`;
   // Relevance shown relative to the best-matching chunk (raw RRF scores are
   // meaningless to humans); weak chunks are dimmed so reviewers can see what
   // the answer actually leaned on.

@@ -18,7 +18,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from . import __version__, config, evals, ingest, llm
+from . import __version__, complexity, config, evals, ingest, llm
 from .store import HybridStore
 
 STATIC_DIR = config.BASE_DIR / "static"
@@ -145,6 +145,7 @@ def ask_stream(request: Request, body: AskRequest) -> StreamingResponse:
     question = body.question.strip()
     hits = _search_or_fail(question)
     sources = _source_list(hits)
+    route = complexity.classify(question)
 
     def events():
         try:
@@ -153,6 +154,7 @@ def ask_stream(request: Request, body: AskRequest) -> StreamingResponse:
                     yield f"event: delta\ndata: {json.dumps({'text': payload})}\n\n"
                 else:
                     payload["sources"] = sources
+                    payload["route"] = {"label": route.label, "reason": route.reason}
                     metrics.record(
                         latency_ms=payload["latency_ms"],
                         cost_usd=payload["cost_usd"],
@@ -188,6 +190,8 @@ def ask(request: Request, body: AskRequest) -> dict:
         input_tokens=result["usage"]["input_tokens"],
     )
     result["sources"] = _source_list(hits)
+    route = complexity.classify(question)
+    result["route"] = {"label": route.label, "reason": route.reason}
     return result
 
 
