@@ -39,8 +39,9 @@ question: **"is it still working?"** LEMMA treats reliability as a feature:
                 │          → Qdrant (embedded local mode)                          │
                 │                                                                  │
  question ────▶ │ /ask     hybrid search: dense + sparse prefetch → RRF fusion     │
+                │          → route: simple vs multi-hop (deterministic)            │
                 │          → top-k chunks as `document` blocks (citations enabled) │
-                │          → Claude → answer + exact cited spans + usage/cost      │
+                │          → Claude → streamed answer + exact cited spans + cost   │
                 │                                                                  │
  reliability ─▶ │ /eval    live recall probe · canary hit-rate · p50/p95 · cost    │
                 └──────────────────────────────────────────────────────────────────┘
@@ -55,6 +56,8 @@ question: **"is it still working?"** LEMMA treats reliability as a feature:
 | **RRF fusion** via Qdrant Query API | Semantic recall *and* exact keyword precision (names, codes, IDs) |
 | Claude **native citations** | The API returns exact `cited_text` spans per claim — real provenance, not prompt-engineered `[1]` markers |
 | **Prompt caching** + usage capture | Cost engineering is visible in the UI per query |
+| Browser **SSE streaming** | `/ask/stream` delivers token chunks immediately, then a final result with citations, sources, route, usage, and cost |
+| Visible complexity router | Every question is labeled `simple` or `multi-hop` with its reason; the classifier is deterministic and adds no model call |
 | Injectable embedders | Unit tests run in milliseconds with no model downloads and no API key |
 | Rate limits + upload caps | A public demo has to assume abuse |
 
@@ -107,13 +110,14 @@ restarts, set `ANTHROPIC_API_KEY`, and deploy.
 - Single-process by design (embedded Qdrant local mode) — right-sized for a demo;
   the store API is identical to Qdrant Cloud when scale is needed.
 - PDF extraction is text-layer only (no OCR).
-- Answers are non-streaming to the browser (server-side streaming is used for
-  timeout protection); SSE streaming is on the roadmap.
+- The complexity router is currently **transparent classification**, not a full
+  iterative search agent: both routes still use the same single-pass hybrid retrieval.
 
 ## Roadmap
 
-Agentic multi-hop retrieval (search-as-a-tool) · browser SSE streaming ·
-auto-generated gold Q/A eval sets · multi-provider fallback · Langfuse tracing.
+Bounded iterative retrieval for `multi-hop` questions (search-as-a-tool, maximum
+three steps) · auto-generated gold Q/A eval sets · multi-provider fallback ·
+Langfuse tracing.
 
 ---
 
