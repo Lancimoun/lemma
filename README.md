@@ -1,5 +1,8 @@
 # LEMMA — a research assistant that *proves* its answers
 
+[![CI](https://github.com/Lancimoun/lemma/actions/workflows/ci.yml/badge.svg)](https://github.com/Lancimoun/lemma/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Upload documents. Ask questions. Every claim in the answer carries a **citation to the
 exact passage it came from** — and a built-in **live reliability panel** measures the
 system's own recall, latency, cost, and cache efficiency while you use it.
