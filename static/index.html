@@ -116,7 +116,8 @@
   <!-- Documents -->
   <section class="panel">
     <h2>Documents</h2>
-    <input type="file" id="file" accept=".txt,.md,.pdf">
+    <input type="file" id="file" accept=".txt,.md,.pdf"
+           aria-label="Choose a document to upload — .txt, .md or .pdf">
     <button id="uploadBtn" onclick="upload()">Upload &amp; index</button>
     <div class="spin" id="upStatus"></div>
     <ul class="doclist" id="docs"></ul>
