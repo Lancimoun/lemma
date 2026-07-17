@@ -12,6 +12,14 @@ QDRANT_PATH = DATA_DIR / "qdrant"
 # --- LLM ---
 MODEL = os.getenv("MODEL", "claude-opus-4-8")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2048"))
+
+# Planner for bounded iterative retrieval. Deliberately NOT MODEL: deciding
+# "do I need another search?" is a routing call, and routing must be near-free
+# or the loop costs more than the answer it improves. Same principle as
+# complexity.classify, which spends nothing at all. Haiku is 5x cheaper on
+# input than Opus and the task is a short judgement over text already retrieved.
+PLANNER_MODEL = os.getenv("PLANNER_MODEL", "claude-haiku-4-5")
+PLANNER_MAX_TOKENS = int(os.getenv("PLANNER_MAX_TOKENS", "128"))
 PUBLIC_BADGE_LABEL = os.getenv("PUBLIC_BADGE_LABEL", "Hybrid RAG + Citations + Live Evals")
 
 # --- Retrieval ---

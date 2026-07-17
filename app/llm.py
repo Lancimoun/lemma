@@ -179,3 +179,77 @@ def estimate_cost(model: str, usage: Any) -> float | None:
         + usage.output_tokens * out_price
     ) / 1_000_000
     return round(cost, 6)
+
+
+_PLANNER_SYSTEM = (
+    "You decide whether a retrieval-augmented search needs another hop.\n"
+    "You are given a question and the document chunks retrieved so far.\n"
+    "If the chunks already contain enough to answer the whole question, reply "
+    "exactly: DONE\n"
+    "Otherwise reply with ONLY a short search query (under 15 words) targeting "
+    "the specific missing piece. No explanation, no punctuation around it.\n"
+    "Prefer DONE. Another hop costs a search and a model call, and a question "
+    "that is merely long is not a question that needs two searches."
+)
+
+
+def plan_follow_up(
+    question: str,
+    hits: Sequence[Hit],
+    step: int,
+    *,
+    client: Any | None = None,
+    model: str | None = None,
+) -> str | None:
+    """Ask a cheap model whether another retrieval hop is needed.
+
+    Returns a follow-up query, or None to stop. Matches the `Planner` protocol
+    in app.iterative, so the loop can take this in production and a list in
+    tests without knowing the difference.
+
+    Uses PLANNER_MODEL (Haiku), not MODEL (Opus): this is a routing decision,
+    and lemma's own rule is that routing must be near-free. A planner that costs
+    as much as the answer it improves is not an improvement.
+
+    Fails CLOSED. Any error -- no key, API down, a model that ignores the
+    format -- returns None, which stops the loop and degrades to exactly the
+    one-shot behaviour lemma has today. A retrieval enhancer that can take the
+    whole endpoint down with it is a downgrade, so this never raises.
+    """
+    try:
+        client = client or get_client()
+        chunks = "\n\n".join(
+            f"[{h.doc_name} · chunk {h.chunk_index}]\n{h.text[:600]}" for h in hits
+        )
+        msg = client.messages.create(
+            model=model or config.PLANNER_MODEL,
+            max_tokens=config.PLANNER_MAX_TOKENS,
+            system=_PLANNER_SYSTEM,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"Question: {question}\n\n"
+                        f"Retrieved so far (hop {step}):\n{chunks}\n\n"
+                        "Reply DONE or a single short search query."
+                    ),
+                }
+            ],
+        )
+        text = "".join(
+            block.text for block in msg.content if getattr(block, "type", "") == "text"
+        ).strip()
+    except Exception:
+        # Deliberately broad: see the fail-closed contract above. Every failure
+        # mode here has the same correct response -- stop looping, answer with
+        # what we have.
+        return None
+
+    if not text or text.upper().startswith("DONE"):
+        return None
+    # A model that ignores "no explanation" tends to return a paragraph. A
+    # 200-word "query" is not a query; treat it as a malformed DONE rather than
+    # searching for an essay.
+    if len(text.split()) > 15:
+        return None
+    return text.strip().strip('"').strip("'")
