@@ -41,8 +41,9 @@ question: **"is it still working?"** LEMMA treats reliability as a feature:
                 │          → FastEmbed: dense (bge-small) + sparse (BM25)          │
                 │          → Qdrant (embedded local mode)                          │
                 │                                                                  │
- question ────▶ │ /ask     hybrid search: dense + sparse prefetch → RRF fusion     │
-                │          → route: simple vs multi-hop (deterministic)            │
+ question ────▶ │ /ask     route: simple vs multi-hop (deterministic classifier)   │
+                │          → simple:    one hybrid search (dense+sparse → RRF)      │
+                │          → multi-hop: iterative search-as-a-tool, ≤3 hops         │
                 │          → top-k chunks as `document` blocks (citations enabled) │
                 │          → Claude → streamed answer + exact cited spans + cost   │
                 │                                                                  │
@@ -113,14 +114,18 @@ restarts, set `ANTHROPIC_API_KEY`, and deploy.
 - Single-process by design (embedded Qdrant local mode) — right-sized for a demo;
   the store API is identical to Qdrant Cloud when scale is needed.
 - PDF extraction is text-layer only (no OCR).
-- The complexity router is currently **transparent classification**, not a full
-  iterative search agent: both routes still use the same single-pass hybrid retrieval.
+- The complexity router labels every question `simple` or `multi-hop`, and the
+  two routes now retrieve differently: `simple` runs one hybrid search, `multi-hop`
+  runs bounded iterative retrieval (search → re-plan → search, capped at 3 hops).
+  The multi-hop planner is a cheap Haiku call that fails closed — with no API key
+  it declines on the first hop, so the route degrades to exactly the one-shot
+  pipeline. Each answer's `retrieval` field reports the hops taken and why it stopped.
 
 ## Roadmap
 
-Bounded iterative retrieval for `multi-hop` questions (search-as-a-tool, maximum
-three steps) · auto-generated gold Q/A eval sets · multi-provider fallback ·
-Langfuse tracing.
+~~Bounded iterative retrieval for `multi-hop` questions~~ ✅ **shipped** (search-as-a-tool,
+≤3 hops, with a per-answer hop trace) · auto-generated gold Q/A eval sets ·
+multi-provider fallback · Langfuse tracing.
 
 ---
 

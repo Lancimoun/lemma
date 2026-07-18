@@ -18,7 +18,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from . import __version__, complexity, config, evals, ingest, llm
+from . import __version__, complexity, config, evals, ingest, iterative, llm
 from .store import HybridStore
 
 STATIC_DIR = config.BASE_DIR / "static"
@@ -117,14 +117,38 @@ def ingest_file(request: Request, file: UploadFile = File(...)) -> dict:
     return {"doc_name": file.filename, "chunks": added}
 
 
-def _search_or_fail(question: str):
-    s = get_store()
+def _retrieve(question: str):
+    """Classify the question, then retrieve for it.
+
+    `multi-hop` questions go through bounded iterative retrieval (search → re-plan
+    → search, capped at 3 hops); everything else takes the one-shot pipeline
+    unchanged. Returns (hits, route, trace) where trace is the iterative step
+    record for the transparency panel, or None for the one-shot path.
+
+    Multi-hop is safe to route into because iterative.retrieve always performs at
+    least the original-question search and degrades to exactly the one-shot
+    result when the planner returns None (see app.iterative). The classification
+    itself is deterministic and costs no model call (see app.complexity).
+    """
     if not question:
         raise HTTPException(400, "Question is empty.")
-    hits = s.search(question, top_k=config.TOP_K, prefetch_k=config.PREFETCH_K)
+    s = get_store()
+    route = complexity.classify(question)
+
+    def _search(q: str):
+        return s.search(q, top_k=config.TOP_K, prefetch_k=config.PREFETCH_K)
+
+    trace = None
+    if route.label == "multi-hop" and config.MULTIHOP_ENABLED:
+        result = iterative.retrieve(question, _search, llm.plan_follow_up)
+        hits = result.hits
+        trace = iterative.trace_payload(result)
+    else:
+        hits = list(_search(question))
+
     if not hits:
         raise HTTPException(404, "No documents indexed yet — upload something first.")
-    return hits
+    return hits, route, trace
 
 
 def _source_list(hits) -> list[dict]:
@@ -143,9 +167,8 @@ def ask_stream(request: Request, body: AskRequest) -> StreamingResponse:
     failures mid-stream arrive as an `error` event (headers are already sent).
     """
     question = body.question.strip()
-    hits = _search_or_fail(question)
+    hits, route, trace = _retrieve(question)
     sources = _source_list(hits)
-    route = complexity.classify(question)
 
     def events():
         try:
@@ -155,6 +178,8 @@ def ask_stream(request: Request, body: AskRequest) -> StreamingResponse:
                 else:
                     payload["sources"] = sources
                     payload["route"] = {"label": route.label, "reason": route.reason}
+                    if trace:
+                        payload["retrieval"] = trace
                     metrics.record(
                         latency_ms=payload["latency_ms"],
                         cost_usd=payload["cost_usd"],
@@ -176,7 +201,7 @@ def ask_stream(request: Request, body: AskRequest) -> StreamingResponse:
 @limiter.limit(config.RATE_LIMIT_ASK)
 def ask(request: Request, body: AskRequest) -> dict:
     question = body.question.strip()
-    hits = _search_or_fail(question)
+    hits, route, trace = _retrieve(question)
 
     try:
         result = llm.answer_question(question, hits)
@@ -190,8 +215,9 @@ def ask(request: Request, body: AskRequest) -> dict:
         input_tokens=result["usage"]["input_tokens"],
     )
     result["sources"] = _source_list(hits)
-    route = complexity.classify(question)
     result["route"] = {"label": route.label, "reason": route.reason}
+    if trace:
+        result["retrieval"] = trace
     return result
 
 

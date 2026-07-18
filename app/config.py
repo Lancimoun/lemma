@@ -20,6 +20,12 @@ MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2048"))
 # input than Opus and the task is a short judgement over text already retrieved.
 PLANNER_MODEL = os.getenv("PLANNER_MODEL", "claude-haiku-4-5")
 PLANNER_MAX_TOKENS = int(os.getenv("PLANNER_MAX_TOKENS", "128"))
+# Route `multi-hop`-classified questions through bounded iterative retrieval
+# (app.iterative). On by default; set MULTIHOP_ENABLED=0 to force every question
+# back onto the one-shot path. Even when on, the loop degrades to one-shot for
+# any question whose planner returns None on the first hop (e.g. no API key), so
+# this flag is a kill-switch, not a safety requirement.
+MULTIHOP_ENABLED = os.getenv("MULTIHOP_ENABLED", "1") != "0"
 PUBLIC_BADGE_LABEL = os.getenv("PUBLIC_BADGE_LABEL", "Hybrid RAG + Citations + Live Evals")
 
 # --- Retrieval ---
