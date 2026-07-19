@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="LEMMA is an evidence-first research assistant with hybrid retrieval, native citations, bounded multi-hop search, and live reliability evaluation.">
+<meta name="theme-color" content="#070a10">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23070a10'/><path d='M17 14v36h31v-8H27V14z' fill='%235eead4'/><circle cx='45' cy='20' r='6' fill='%23fbbf6b'/></svg>">
 <title>LEMMA — a research assistant that proves its answers</title>
 <style>
   :root {
     --bg: #070a10; --panel: rgba(22,28,40,.55); --panel2: rgba(30,38,54,.6); --border: rgba(120,140,180,.18);
     --text: #eaf1fb; --muted: #96a4bd; --accent: #5eead4; --accent2: #fbbf6b;
-    --pass: #4ade80; --fail: #fb7185; --glow: rgba(94,234,212,.35);
+    --pass: #4ade80; --fail: #fb7185; --violet: #818cf8; --glow: rgba(94,234,212,.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -34,21 +37,79 @@
   .grain { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .035;
     background-image: radial-gradient(rgba(255,255,255,.5) .5px, transparent .5px); background-size: 3px 3px; }
 
-  header { padding: 26px 40px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  header h1 {
-    font-size: 30px; font-weight: 800; letter-spacing: 4px;
-    background: linear-gradient(120deg, #5eead4 0%, #818cf8 55%, #fbbf6b 100%);
+  /* --- Evidence observatory hero: the product's proof path, not decoration --- */
+  .hero {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: grid; grid-template-columns: minmax(0,1.16fr) minmax(330px,.84fr); align-items: center; gap: 36px;
+    max-width: 1480px; min-height: 340px; margin: 0 auto; padding: 34px 40px 24px;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 18px 28px 8px; z-index: -1; border-radius: 28px;
+    border: 1px solid rgba(129,140,248,.14);
+    background: linear-gradient(120deg, rgba(13,18,29,.82), rgba(12,18,28,.28) 58%, rgba(7,10,16,.08));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 28px 90px rgba(0,0,0,.28);
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 18px 28px 8px; z-index: -1; border-radius: 28px; pointer-events: none;
+    background-image: linear-gradient(rgba(129,140,248,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(129,140,248,.04) 1px, transparent 1px);
+    background-size: 32px 32px; mask-image: linear-gradient(90deg, #000, transparent 76%);
+  }
+  .hero-copy { padding: 18px 12px 12px; }
+  .hero-kicker { display: flex; align-items: center; gap: 10px; color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 2.6px; text-transform: uppercase; }
+  .hero-kicker::before { content: ""; width: 28px; height: 1px; background: linear-gradient(90deg,var(--accent),transparent); }
+  .brand-row { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; margin-top: 10px; }
+  .hero h1 {
+    font-size: clamp(46px,6vw,82px); line-height: .94; font-weight: 850; letter-spacing: .08em;
+    background: linear-gradient(120deg, var(--accent) 0%, var(--violet) 55%, var(--accent2) 100%);
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 22px var(--glow));
+    filter: drop-shadow(0 0 24px var(--glow));
   }
-  header .tag { color: var(--muted); font-size: 14px; }
-  header .badge {
-    margin-left: auto; font-size: 12px; color: var(--accent); font-weight: 600;
-    border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px;
-    background: rgba(94,234,212,.06); backdrop-filter: blur(12px);
-  }
+  .hero .tag { color: var(--muted); font-size: 14px; max-width: 30ch; }
+  .hero-lede { max-width: 68ch; margin-top: 16px; color: var(--muted); font-size: 15px; }
+  .hero-lede strong { color: var(--text); font-weight: 650; }
+  .proof-rail { list-style: none; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-top: 22px; }
+  .proof-rail li { position: relative; min-height: 74px; padding: 12px 10px 10px; overflow: hidden; border: 1px solid var(--border); border-radius: 13px; background: rgba(18,24,36,.54); }
+  .proof-rail li::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 1px; background: linear-gradient(90deg,var(--accent),transparent); opacity: .55; }
+  .proof-rail .step { display: block; color: var(--accent2); font: 700 9px/1.2 ui-monospace,Consolas,monospace; letter-spacing: .18em; }
+  .proof-rail b { display: block; margin-top: 7px; font-size: 12px; letter-spacing: .02em; }
+  .proof-rail small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+  .hero-visual { position: relative; min-height: 280px; display: grid; place-items: center; }
+  .proof-constellation { position: absolute; inset: 0; }
+  .proof-constellation svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 12px rgba(94,234,212,.12)); }
+  .proof-constellation .trace { fill: none; stroke: url(#proofGradient); stroke-width: 1.2; stroke-dasharray: 8 8; animation: trace-flow 10s linear infinite; }
+  .proof-constellation .orbit { fill: none; stroke: rgba(129,140,248,.16); stroke-width: .7; }
+  .proof-constellation .node { fill: var(--accent); transform-box: fill-box; transform-origin: center; animation: node-pulse 3.2s ease-in-out infinite; }
+  .proof-constellation .node.warm { fill: var(--accent2); animation-delay: -1.2s; }
+  @keyframes trace-flow { to { stroke-dashoffset: -96; } }
+  @keyframes node-pulse { 50% { transform: scale(1.8); opacity: .55; } }
+  .signal-card { position: relative; z-index: 1; width: min(286px,80%); padding: 18px; border: 1px solid rgba(94,234,212,.22); border-radius: 18px; background: rgba(10,15,24,.76); backdrop-filter: blur(16px); box-shadow: 0 20px 60px rgba(0,0,0,.38); }
+  .signal-card .label { color: var(--muted); font: 700 9px/1.2 ui-monospace,Consolas,monospace; letter-spacing: .22em; text-transform: uppercase; }
+  .signal-card strong { display: block; margin-top: 8px; font-size: 17px; }
+  .signal-card .equation { margin-top: 11px; color: var(--accent); font: 600 11px/1.5 ui-monospace,Consolas,monospace; }
+  .hero .badge { position: absolute; right: 8px; bottom: 10px; z-index: 2; font-size: 11px; color: var(--accent); font-weight: 700; border: 1px solid var(--border); padding: 7px 13px; border-radius: 20px; background: rgba(94,234,212,.07); backdrop-filter: blur(12px); }
   main { display: grid; grid-template-columns: 270px 1fr 330px; gap: 20px; padding: 12px 32px 40px; max-width: 1480px; margin: 0 auto; }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } header { padding: 22px 24px 14px; } }
+  @media (max-width: 1000px) {
+    .hero { grid-template-columns: 1fr; padding: 28px 24px 18px; }
+    .hero::before, .hero::after { inset-inline: 12px; }
+    .hero-visual { min-height: 220px; }
+    main { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .hero { gap: 10px; min-height: auto; padding: 24px 18px 14px; }
+    .hero::before, .hero::after { inset: 8px 8px 4px; }
+    .hero-copy { padding: 14px 4px 4px; }
+    .hero h1 { font-size: clamp(42px,18vw,68px); }
+    .brand-row { gap: 10px; }
+    .proof-rail { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .hero-visual { min-height: 190px; }
+    .signal-card { width: min(260px,82%); }
+    .hero .badge { right: 2px; bottom: 0; max-width: 92%; text-align: center; }
+    main { padding: 10px 12px 30px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+  }
   /* --- Dark glassmorphism cards --- */
   .panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 20px;
@@ -106,10 +167,57 @@
 <body>
 <div class="aurora"><div class="blob"></div></div>
 <div class="grain"></div>
-<header>
-  <h1>LEMMA</h1>
-  <span class="tag">a research assistant that <b>proves</b> its answers</span>
-  <span class="badge" id="modelBadge">Hybrid RAG + Citations + Live Evals</span>
+<header class="hero">
+  <div class="hero-copy">
+    <p class="hero-kicker">Live evidence surface</p>
+    <div class="brand-row">
+      <h1>LEMMA</h1>
+      <span class="tag">a research assistant that <b>proves</b> its answers</span>
+    </div>
+    <p class="hero-lede">
+      Every response moves through a visible proof path: hybrid retrieval, bounded
+      re-planning for complex questions, passage-level citations, and a recall probe
+      that tests the live index. <strong>The evidence stays inspectable.</strong>
+    </p>
+    <ol class="proof-rail" aria-label="How LEMMA proves an answer">
+      <li><span class="step">01</span><b>Retrieve</b><small>Dense + BM25 + RRF</small></li>
+      <li><span class="step">02</span><b>Re-plan</b><small>Bounded multi-hop</small></li>
+      <li><span class="step">03</span><b>Cite</b><small>Passage-level evidence</small></li>
+      <li><span class="step">04</span><b>Evaluate</b><small>Live recall probe</small></li>
+    </ol>
+  </div>
+
+  <div class="hero-visual">
+    <div class="proof-constellation" aria-hidden="true">
+      <svg viewBox="0 0 520 300" role="presentation">
+        <defs>
+          <linearGradient id="proofGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#66f6cf"/>
+            <stop offset="0.48" stop-color="#65a8ff"/>
+            <stop offset="1" stop-color="#b28cff"/>
+          </linearGradient>
+        </defs>
+        <ellipse class="orbit orbit-a" cx="260" cy="150" rx="218" ry="102"/>
+        <ellipse class="orbit orbit-b" cx="260" cy="150" rx="152" ry="132"/>
+        <path class="trace trace-a" d="M48 165 C130 60 206 244 296 119 S430 86 479 152"/>
+        <path class="trace trace-b" d="M93 96 C180 190 264 49 432 207"/>
+        <circle class="node warm" cx="48" cy="165" r="7"/>
+        <circle class="node" cx="93" cy="96" r="5"/>
+        <circle class="node" cx="162" cy="185" r="8"/>
+        <circle class="node warm" cx="260" cy="150" r="13"/>
+        <circle class="node" cx="296" cy="119" r="6"/>
+        <circle class="node" cx="376" cy="76" r="7"/>
+        <circle class="node warm" cx="432" cy="207" r="9"/>
+        <circle class="node" cx="479" cy="152" r="5"/>
+      </svg>
+    </div>
+    <div class="signal-card">
+      <span class="label">Grounding contract</span>
+      <strong>Answer only from retrieved evidence.</strong>
+      <p class="equation">question → search → source → cited claim</p>
+    </div>
+    <span class="badge" id="modelBadge" aria-live="polite">Hybrid RAG + Citations + Live Evals</span>
+  </div>
 </header>
 
 <main>
