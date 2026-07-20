@@ -1,7 +1,19 @@
-fastapi>=0.115
-uvicorn[standard]>=0.30
-qdrant-client[fastembed]>=1.12
-anthropic>=0.45
-pypdf>=5.0
-slowapi>=0.1.9
-python-multipart>=0.0.9
+# Upper bounds are deliberate. There is no lockfile here, so the Docker build
+# resolves these fresh every time — without a ceiling, the next rebuild can take
+# a breaking major with no commit, no review, and no failing test beforehand.
+#
+# This already happened: `pypdf>=5.0` silently became **6.14.2** in the working
+# environment. A major version arrived and nobody reviewed it. The floor stays at
+# 5.0 (both majors work here) but the ceiling now makes 7.x a decision instead of
+# an accident.
+#
+# Honest limit: `<1` on a 0.x package stops 1.0, not a breaking 0.x minor — 0.x
+# offers no stability guarantee. A lockfile is the stronger answer; this is the
+# improvement available without one.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+qdrant-client[fastembed]>=1.12,<2
+anthropic>=0.45,<1
+pypdf>=5.0,<7
+slowapi>=0.1.9,<1
+python-multipart>=0.0.9,<1
