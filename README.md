@@ -1,7 +1,24 @@
-# LEMMA — a research assistant that *proves* its answers
+<h1 align="center">LEMMA</h1>
+<p align="center"><strong>A research assistant that <em>proves</em> its answers.</strong></p>
 
-[![CI](https://github.com/Lancimoun/lemma/actions/workflows/ci.yml/badge.svg)](https://github.com/Lancimoun/lemma/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/Lancimoun/lemma/actions/workflows/ci.yml"><img src="https://github.com/Lancimoun/lemma/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Qdrant-DC244C?style=flat-square&logo=qdrant&logoColor=white" alt="Qdrant">
+  <img src="https://img.shields.io/badge/Claude-streaming%20citations-cc785c?style=flat-square" alt="Claude">
+  <img src="https://img.shields.io/badge/Railway-live-0B0D0E?style=flat-square&logo=railway&logoColor=white" alt="Railway">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License: MIT">
+</p>
+
+<p align="center">
+  <a href="https://lemma-production-b84f.up.railway.app"><strong>▶ Live demo</strong></a> ·
+  <a href="#how-it-proves-its-answers">How it proves answers</a> ·
+  <a href="#the-reliability-panel">Reliability panel</a> ·
+  <a href="#run-it">Run it</a>
+</p>
+
+---
 
 Upload documents. Ask questions. Every claim in the answer carries a **citation to the
 exact passage it came from** — and a built-in **live reliability panel** measures the
