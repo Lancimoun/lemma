@@ -129,6 +129,6 @@ multi-provider fallback · Langfuse tracing.
 
 ---
 
-Built by **Lance Jilliard Galicia** — part of the FORGE family:
+Built by **[Architect L.](https://github.com/Lancimoun)** — part of the FORGE family:
 **Maxima** (24/7 personal AI), **Axiom** (multi-provider LLM gateway),
 **Agent Reliability Arena** (agent eval harness), and **LEMMA**.
