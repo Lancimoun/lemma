@@ -2,11 +2,12 @@
 
 ## What is LEMMA?
 
-LEMMA is a research assistant that proves its answers. You upload documents, ask
-questions, and every factual claim in the answer is backed by a citation pointing at
-the exact passage it came from. In mathematics, a lemma is a small proven result used
-as a stepping stone toward a larger proof — LEMMA applies the same standard to answers:
-no claim without evidence.
+LEMMA is a research assistant that exposes the evidence behind grounded answers. You
+upload documents, ask questions, and cited factual claims point at the exact passage
+they came from. If a response has no citation, LEMMA marks it unverified instead of
+silently claiming grounding. In mathematics, a lemma is a small proven result used as
+a stepping stone toward a larger proof — LEMMA applies that standard as a goal: no
+claim without evidence, and no hidden failure to meet it.
 
 LEMMA ships with this handbook pre-indexed, so you can ask it questions about itself
 before uploading anything.
@@ -32,10 +33,11 @@ embedded local mode, so the whole index lives on disk with zero external service
 ## How answers are generated
 
 The top fused chunks are handed to Claude as document content blocks with native
-citations enabled. The model must ground every claim in those documents, and the API
-returns the exact cited span for each claim — the interface renders these as
-citation chips you can inspect. If the documents do not contain the answer, LEMMA
-says so instead of guessing.
+citations enabled. The model is instructed to ground every factual claim in those
+documents, and the API returns the exact cited span for each citation — the interface
+renders these as citation chips you can inspect. If a response contains no citations,
+LEMMA marks it unverified; if the documents do not contain the answer, the model is
+instructed to say so instead of guessing.
 
 ## How reliability is measured
 

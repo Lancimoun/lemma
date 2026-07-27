@@ -1,5 +1,5 @@
 <h1 align="center">LEMMA</h1>
-<p align="center"><strong>A research assistant that <em>proves</em> its answers.</strong></p>
+<p align="center"><strong>A research assistant that <em>shows its evidence</em>.</strong></p>
 
 <p align="center">
   <a href="https://github.com/Lancimoun/lemma/actions/workflows/ci.yml"><img src="https://github.com/Lancimoun/lemma/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -13,19 +13,25 @@
 
 <p align="center">
   <a href="https://lemma-production-b84f.up.railway.app"><strong>▶ Live demo</strong></a> ·
-  <a href="#how-it-proves-its-answers">How it proves answers</a> ·
-  <a href="#the-reliability-panel">Reliability panel</a> ·
-  <a href="#run-it">Run it</a>
+  <a href="#architecture">How it grounds answers</a> ·
+  <a href="#why-this-project-exists">Reliability panel</a> ·
+  <a href="#quickstart">Run it</a>
 </p>
+
+![LEMMA evidence card](static/lemma-social-card.png)
+
+*Dense + sparse retrieval converges through RRF; bounded re-planning may stop early and is capped at three hops, citations link to exact passages when an answer is grounded, and the live recall probe writes, retrieves, verifies, cleans up, then reports pass or fail.*
 
 ---
 
-Upload documents. Ask questions. Every claim in the answer carries a **citation to the
-exact passage it came from** — and a built-in **live reliability panel** measures the
-system's own recall, latency, cost, and cache efficiency while you use it.
+Upload documents. Ask questions. Grounded answers carry **citations to the exact
+passages they came from**; when citations are absent, the interface marks the answer
+unverified. A built-in **live reliability panel** measures the system's own recall,
+latency, cost, and cache efficiency while you use it.
 
 > In mathematics, a *lemma* is a small **proven** result used to build larger proofs.
-> LEMMA holds answers to the same standard: no claim without evidence.
+> LEMMA aims for the same standard: no claim without evidence, and no silent claim
+> of grounding when citations are absent.
 
 ## Live demo
 
@@ -101,7 +107,7 @@ itself before uploading anything (try: *"How does LEMMA measure reliability?"*).
 
 ```bash
 .venv/Scripts/pip install -r requirements-dev.txt
-.venv/Scripts/python -m pytest -q
+.venv/Scripts/python -W error -m pytest -q
 ```
 
 Tests inject deterministic fake embedders — no network, no API key, no model downloads.

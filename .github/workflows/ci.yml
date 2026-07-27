@@ -3,13 +3,17 @@ name: LEMMA CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -18,7 +22,7 @@ jobs:
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt
-          pip install pytest
+          pip install -r requirements-dev.txt
 
       # No ANTHROPIC_API_KEY and no network are provided on purpose. The suite
       # injects deterministic fake embedders (real FastEmbed would pull ~100MB
@@ -28,4 +32,4 @@ jobs:
       # suite that quietly depends on credentials cannot run in CI at all, and
       # the day it starts is the day you want to know.
       - name: Test suite
-        run: python -m pytest -q
+        run: python -W error -m pytest -q

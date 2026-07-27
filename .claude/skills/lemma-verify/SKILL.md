@@ -10,11 +10,11 @@ Prove LEMMA works at three levels: unit (pytest), process (server boots), and pr
 ## 1 · Test suite (~5s, no network, no API key)
 
 ```
-.venv\Scripts\python.exe -m pytest -q        # Windows
-.venv/bin/python -m pytest -q                # POSIX
+.venv\Scripts\python.exe -W error -m pytest -q        # Windows
+.venv/bin/python -W error -m pytest -q                # POSIX
 ```
 
-Expect **all green** (23 tests as of 2026-07). Tests inject fake embedders, so a pass here says the logic is right — not that the real models or server work. Any failure: stop, fix, rerun before proceeding.
+Expect **the current count printed by pytest to be all green, with no warnings**. Tests inject fake embedders, so a pass here says the logic is right — not that the real models or server work. Any failure or warning: stop, fix, rerun before proceeding.
 
 ## 2 · Boot the real server
 
@@ -22,7 +22,10 @@ Expect **all green** (23 tests as of 2026-07). Tests inject fake embedders, so a
 .venv\Scripts\python.exe -m uvicorn app.main:app --port 8765
 ```
 
-Run it in the background and poll `http://127.0.0.1:8765/health` until it answers (up to ~60s on a cold cache — see Gotchas). Use an uncommon port (8765) so a dev instance on 8000 doesn't collide.
+Run it in the background with `LEMMA_DATA_DIR` set to a new isolated temporary
+directory, then poll `http://127.0.0.1:8765/health` until it answers (up to ~60s
+on a cold cache — see Gotchas). Use an uncommon port (8765) so a dev instance
+on 8000 doesn't collide. Record the spawned PID and stop only that process.
 
 ## 3 · Probe the product surface
 
@@ -30,9 +33,15 @@ Run it in the background and poll `http://127.0.0.1:8765/health` until it answer
 |---|---|
 | `GET /health` | `status: "ok"`, a `public_badge` string (never a raw model id), `documents ≥ 1` (sample doc auto-seeds) |
 | `GET /documents` | JSON list including the seeded handbook |
+| `GET /` | `200`; canonical plus complete Open Graph/Twitter image metadata point to `/lemma-social-card.png` |
+| `GET /lemma-social-card.png` | `200 image/png`; 1200×630; bytes match `static/lemma-social-card.png` |
 | `POST /ask` (only if `ANTHROPIC_API_KEY` is set) | Grounded answer with `sources`; without a key, a graceful error is CORRECT behavior, not a failure |
 
-Optionally compare prod: `GET https://lemma-production-b84f.up.railway.app/health` — if its response is missing fields that local has (e.g. `public_badge`), prod is running an older build; report the lag, don't "fix" the code.
+For a release, compare the same read-only GETs against
+`https://lemma-production-b84f.up.railway.app`. A branch candidate may correctly
+be newer than production; report that split as **repository-ready, not deployed**.
+After an authorized deployment, production must serve the new root metadata and
+the exact PNG bytes as well as a healthy `/health`.
 
 **Always kill the server when done** and report a pass/fail line per level, with the failing output verbatim if anything failed.
 

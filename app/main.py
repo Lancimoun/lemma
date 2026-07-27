@@ -68,6 +68,11 @@ def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/lemma-social-card.png", include_in_schema=False)
+def social_card() -> FileResponse:
+    return FileResponse(STATIC_DIR / "lemma-social-card.png", media_type="image/png")
+
+
 @app.get("/health")
 def health() -> dict:
     docs = [d for d in get_store().list_docs() if not d["doc_name"].startswith(evals.PROBE_PREFIX)]
