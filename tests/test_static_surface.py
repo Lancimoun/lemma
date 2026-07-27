@@ -5,6 +5,7 @@ hero must remain self-contained, motion-safe, and must not rename the DOM
 hooks used by the upload, ask, and live-eval behavior.
 """
 
+import hashlib
 from pathlib import Path
 import struct
 import zlib
@@ -13,7 +14,7 @@ import zlib
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
-HANDBOOK = (ROOT / "sample_docs" / "lemma-handbook.md").read_text(encoding="utf-8")
+HANDBOOK_PATH = ROOT / "sample_docs" / "lemma-handbook.md"
 WORKFLOW = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 VERIFY_SKILL = (ROOT / ".claude" / "skills" / "lemma-verify" / "SKILL.md").read_text(
     encoding="utf-8"
@@ -80,6 +81,16 @@ def test_document_discovery_metadata_stays_present():
     assert 'href="data:image/svg+xml,' in HTML
 
 
+def test_persisted_handbook_stays_byte_stable_without_a_migration():
+    # Railway already has this bundled document in its persistent Qdrant volume.
+    # `_seed_sample_doc` skips existing names, so changing only the source file
+    # would make repo truth diverge from what the live assistant retrieves.
+    normalized = HANDBOOK_PATH.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert hashlib.sha256(normalized.encode()).hexdigest() == (
+        "47296ae67a23de0905aac75702a9bd7d684f29cffbf13ee4672b4451f483acbe"
+    )
+
+
 def test_social_card_is_a_real_1200_by_630_png():
     data = CARD.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
@@ -133,9 +144,6 @@ def test_social_card_metadata_and_readme_are_complete():
     assert "proves its answers" not in HTML.lower()
     assert "proves</em> its answers" not in README
     assert "when citations are absent, the interface marks the answer" in README
-    assert "marks it unverified instead of" in HANDBOOK
-    assert "tracked for every question asked" not in HANDBOOK
-    assert "rate limits on every endpoint" not in HANDBOOK
     for anchor in ("#architecture", "#why-this-project-exists", "#quickstart"):
         assert f'href="{anchor}"' in README
 

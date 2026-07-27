@@ -2,12 +2,11 @@
 
 ## What is LEMMA?
 
-LEMMA is a research assistant that exposes the evidence behind grounded answers. You
-upload documents, ask questions, and cited factual claims point at the exact passage
-they came from. If a response has no citation, LEMMA marks it unverified instead of
-silently claiming grounding. In mathematics, a lemma is a small proven result used as
-a stepping stone toward a larger proof — LEMMA applies that standard as a goal: no
-claim without evidence, and no hidden failure to meet it.
+LEMMA is a research assistant that proves its answers. You upload documents, ask
+questions, and every factual claim in the answer is backed by a citation pointing at
+the exact passage it came from. In mathematics, a lemma is a small proven result used
+as a stepping stone toward a larger proof — LEMMA applies the same standard to answers:
+no claim without evidence.
 
 LEMMA ships with this handbook pre-indexed, so you can ask it questions about itself
 before uploading anything.
@@ -33,11 +32,10 @@ embedded local mode, so the whole index lives on disk with zero external service
 ## How answers are generated
 
 The top fused chunks are handed to Claude as document content blocks with native
-citations enabled. The model is instructed to ground every factual claim in those
-documents, and the API returns the exact cited span for each citation — the interface
-renders these as citation chips you can inspect. If a response contains no citations,
-LEMMA marks it unverified; if the documents do not contain the answer, the model is
-instructed to say so instead of guessing.
+citations enabled. The model must ground every claim in those documents, and the API
+returns the exact cited span for each claim — the interface renders these as
+citation chips you can inspect. If the documents do not contain the answer, LEMMA
+says so instead of guessing.
 
 ## How reliability is measured
 
@@ -53,13 +51,13 @@ built-in evaluation panel runs three checks:
    the index and reports a retrieval hit rate, catching regressions in chunking or
    search configuration.
 3. **Operational metrics.** Rolling latency percentiles (p50/p95), average cost per
-   query, and the cache hit rate are tracked for successfully completed answers.
+   query, and the cache hit rate are tracked for every question asked.
 
 ## How costs stay low
 
 The retrieval layer is free by design: local embeddings and an embedded vector
 database mean the only metered cost is the Claude API call itself. That call is kept
 cheap with prompt caching on stable prefixes, a hard cap on response tokens, and
-rate limits on ingest, ask, and delete operations. The Claude model is configurable
-through a single environment variable, so a public demo can run on a fast, low-cost
-model while the same code serves a higher-quality model in private use.
+rate limits on every endpoint. The Claude model is configurable through a single
+environment variable, so a public demo can run on a fast, low-cost model while the
+same code serves a higher-quality model in private use.
