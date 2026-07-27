@@ -32,9 +32,13 @@ CARD_ALT = (
 def test_cinematic_hero_explains_the_proof_pipeline():
     assert '<header class="hero">' in HTML
     assert 'class="proof-constellation" aria-hidden="true"' in HTML
-    assert '<ol class="proof-rail" aria-label="How LEMMA proves an answer">' in HTML
+    assert '<ol class="proof-rail" aria-label="LEMMA evidence layers">' in HTML
     for step in ("Retrieve", "Re-plan", "Cite", "Evaluate"):
         assert f"<b>{step}</b>" in HTML
+    assert "re-planning when needed" in HTML
+    assert "passage-level citations for grounded answers" in HTML
+    assert "separate recall probe" in HTML
+    assert "proves</b> its answers" not in HTML
 
 
 def test_cinematic_motion_has_a_reduced_motion_contract():
@@ -130,6 +134,8 @@ def test_social_card_metadata_and_readme_are_complete():
     assert "proves</em> its answers" not in README
     assert "when citations are absent, the interface marks the answer" in README
     assert "marks it unverified instead of" in HANDBOOK
+    assert "tracked for every question asked" not in HANDBOOK
+    assert "rate limits on every endpoint" not in HANDBOOK
     for anchor in ("#architecture", "#why-this-project-exists", "#quickstart"):
         assert f'href="{anchor}"' in README
 

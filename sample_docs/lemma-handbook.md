@@ -53,13 +53,13 @@ built-in evaluation panel runs three checks:
    the index and reports a retrieval hit rate, catching regressions in chunking or
    search configuration.
 3. **Operational metrics.** Rolling latency percentiles (p50/p95), average cost per
-   query, and the cache hit rate are tracked for every question asked.
+   query, and the cache hit rate are tracked for successfully completed answers.
 
 ## How costs stay low
 
 The retrieval layer is free by design: local embeddings and an embedded vector
 database mean the only metered cost is the Claude API call itself. That call is kept
 cheap with prompt caching on stable prefixes, a hard cap on response tokens, and
-rate limits on every endpoint. The Claude model is configurable through a single
-environment variable, so a public demo can run on a fast, low-cost model while the
-same code serves a higher-quality model in private use.
+rate limits on ingest, ask, and delete operations. The Claude model is configurable
+through a single environment variable, so a public demo can run on a fast, low-cost
+model while the same code serves a higher-quality model in private use.
