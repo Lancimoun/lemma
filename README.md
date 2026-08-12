@@ -150,6 +150,11 @@ restarts, set `ANTHROPIC_API_KEY`, and deploy.
 ≤3 hops, with a per-answer hop trace) · auto-generated gold Q/A eval sets ·
 multi-provider fallback · Langfuse tracing.
 
+
+## Further reading
+
+[**Your AI agent's tests are lying to you**](https://lancimoun.github.io/writing/fake-tests.html) — LEMMA exists so an answer can prove itself. This is the other half: five ways the *check* on that answer can pass while verifying nothing.
+
 ---
 
 Built by **[Architect L.](https://github.com/Lancimoun)** — part of the FORGE family:
